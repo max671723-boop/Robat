@@ -9,6 +9,8 @@ API_URL = f"https://api.telegram.org/bot{TOKEN}/"
 ADMINS = [7210975276]
 
 user_states = {}
+admin_states = {}  # <<<<<<<<<<<<<<<< دیکشنری جدید برای مدیریت وضعیت ادمین
+
 orders = {}
 
 def send_message(chat_id, text, buttons=None):
@@ -32,6 +34,16 @@ def handle_message(message):
     chat_id = message["chat"]["id"]
     text = message.get("text", "")
 
+    # <<<<<<<<<<<<<<<< منطق جدید برای مدیریت پیام ادمین
+    if chat_id in ADMINS and chat_id in admin_states:
+        if admin_states[chat_id]["state"] == "waiting_for_dm":
+            customer_id = admin_states[chat_id]["customer_id"]
+            send_message(customer_id, text)
+            send_message(chat_id, f"✅ پیام شما با موفقیت برای کاربر <code>{customer_id}</code> ارسال شد.")
+            del admin_states[chat_id]
+            return
+
+    # <<<<<<<<<<<<<<<< منطق قبلی برای مدیریت پیام کاربر
     if text.startswith("/start"):
         user_states[chat_id] = None
         buttons = [
@@ -99,7 +111,8 @@ def handle_callback_query(callback):
         if from_id not in ADMINS:
             return
         customer_id = int(data.split("_")[1])
-        send_message(from_id, f"📤 سفارش مربوط به <code>{customer_id}</code> با موفقیت به دایرکت ارسال شد ✅")
+        admin_states[from_id] = {"state": "waiting_for_dm", "customer_id": customer_id} # <<<<<<<<<<<<<<<< ثبت وضعیت ادمین
+        send_message(from_id, "لطفاً پیام مورد نظر خود را برای مشتری وارد کنید:")
 
 def save_order(chat_id):
     order = orders.get(chat_id, {})
@@ -154,10 +167,10 @@ def hello_world():
     return 'Bot is running!'
 
 def run_flask_app():
-    # پورت 8080 برای اجرای روی Replit مناسب است.
     app.run(host='0.0.0.0', port=8080)
 
 if __name__ == "__main__":
     flask_thread = threading.Thread(target=run_flask_app)
     flask_thread.start()
     bot_polling()
+
